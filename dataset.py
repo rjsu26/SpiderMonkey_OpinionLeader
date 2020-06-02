@@ -4,6 +4,7 @@ import networkx as nx
 from statistics import mean
 
 def read_graph():
+    """ Returns dictionary of shortest paths and additive centrality(deg/mean(CC,EC,PC,BC)) """
 
     G = nx.read_gml("/home/raj/Desktop/research_papers/SpiderMonkey/netscience.gml")
     print(nx.info(G))
@@ -13,7 +14,7 @@ def read_graph():
     new_shortest = {}
     for src, dic in shortest.items():
         temp_dic = {}
-        for node, v in dic:
+        for node, v in dic.items():
             temp_dic[node_map[node]]=v 
 
         new_shortest[node_map[src]] = temp_dic
