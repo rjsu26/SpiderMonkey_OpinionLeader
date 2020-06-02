@@ -6,7 +6,7 @@ from statistics import mean
 def read_graph():
     """ Returns dictionary of shortest paths and additive centrality(deg/mean(CC,EC,PC,BC)) """
 
-    G = nx.read_gml("/home/raj/Desktop/research_papers/SpiderMonkey/netscience.gml")
+    G = nx.read_gml("/home/raj/Desktop/research_papers/SpiderMonkey/EvoloPy/netscience.gml")
     print(nx.info(G))
 
     cent, node_map = find_centralities(G)

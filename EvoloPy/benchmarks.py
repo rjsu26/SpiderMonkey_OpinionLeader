@@ -9,6 +9,12 @@ import numpy
 import math
 
 # define the function blocks
+def F_1(x, cent):
+    sm =0 
+    for t in numpy.nditer(x):
+        sm += cent[t]
+    return sm 
+
 def prod( it ):
     p= 1
     for n in it:
@@ -211,6 +217,7 @@ def getFunctionDetails(a):
                "F21" : ["F21",0,10,4],
                "F22" : ["F22",0,10,4],
                "F23" : ["F23",0,10,4],
+               "F_1":["F_1", 1, 1589, 6],
             }
     return param.get(a, "nothing")
 

@@ -69,7 +69,7 @@ def selector(algo,func_details,popSize,Iter):
     return x
 
 
-def run(optimizer, objectivefunc, NumOfRuns, params, export_flags):
+def run(optimizer, objectivefunc, NumOfRuns, params, export_flags, data_package):
 
     """
     It serves as the main interface of the framework for running the experiments.
