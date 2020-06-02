@@ -1,16 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sun May 29 00:49:35 2016
-
-@author: hossam
-"""
-
-#% ======================================================== % 
-#% Files of the Matlab programs included in the book:       %
-#% Xin-She Yang, Nature-Inspired Metaheuristic Algorithms,  %
-#% Second Edition, Luniver Press, (2010).   www.luniver.com %
-#% ======================================================== %    
-#
 #% -------------------------------------------------------- %
 #% Firefly Algorithm for constrained optimization using     %
 #% for the design of a spring (benchmark)                   % 
@@ -35,7 +23,7 @@ def alpha_new(alpha,NGen):
 
 
 
-def FFA(objf,lb,ub,dim,n,MaxGeneration):
+def FFA(objf,lb,ub,dim,n,MaxGeneration, data_package):
 
     #General parameters
 
@@ -63,7 +51,7 @@ def FFA(objf,lb,ub,dim,n,MaxGeneration):
     #ns(i,:)=Lb+(Ub-Lb).*rand(1,d);
     ns = numpy.zeros((n, dim))
     for i in range(dim):
-        ns[:, i] = numpy.random.uniform(0,1, n) * (ub[i] - lb[i]) + lb[i]
+        ns[:, i] = numpy.random.randint(1,1590, size=n) 
     Lightn=numpy.ones(n)
     Lightn.fill(float("inf")) 
     
@@ -86,7 +74,7 @@ def FFA(objf,lb,ub,dim,n,MaxGeneration):
         
         #% Evaluate new solutions (for all n fireflies)
         for i in range(0,n):
-            zn[i]=objf(ns[i,:])
+            zn[i]=objf(ns[i,:], data_package["centrality"])
             Lightn[i]=zn[i]
         
         

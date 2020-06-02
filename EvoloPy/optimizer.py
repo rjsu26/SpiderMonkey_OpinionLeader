@@ -30,7 +30,7 @@ import plot_boxplot as box_plot
 
 warnings.simplefilter(action='ignore')
 
-def selector(algo,func_details,popSize,Iter):
+def selector(algo,func_details,popSize,Iter, data_package):
     function_name=func_details[0]
     lb=func_details[1]
     ub=func_details[2]
@@ -45,7 +45,7 @@ def selector(algo,func_details,popSize,Iter):
     elif(algo=="BAT"):
         x=bat.BAT(getattr(benchmarks, function_name),lb,ub,dim,popSize,Iter)     
     elif(algo=="FFA"):
-        x=ffa.FFA(getattr(benchmarks, function_name),lb,ub,dim,popSize,Iter)     
+        x=ffa.FFA(getattr(benchmarks, function_name),lb,ub,dim,popSize,Iter, data_package)     
     elif(algo=="GWO"):
         x=gwo.GWO(getattr(benchmarks, function_name),lb,ub,dim,popSize,Iter)     
     elif(algo=="WOA"):
@@ -65,7 +65,7 @@ def selector(algo,func_details,popSize,Iter):
     elif(algo=="DE"):
         x=de.DE(getattr(benchmarks, function_name),lb,ub,dim,popSize,Iter)
     else:
-        return null;
+        return None
     return x
 
 
@@ -127,7 +127,7 @@ def run(optimizer, objectivefunc, NumOfRuns, params, export_flags, data_package)
             executionTime = [0]*NumOfRuns
             for k in range (0,NumOfRuns):               
                 func_details=benchmarks.getFunctionDetails(objectivefunc[j])
-                x=selector(optimizer[i],func_details,PopulationSize,Iterations)
+                x=selector(optimizer[i],func_details,PopulationSize,Iterations, data_package)
                 convergence[k] = x.convergence
                 optimizerName = x.optimizer
                 objfname = x.objfname     
