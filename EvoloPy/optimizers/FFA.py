@@ -11,7 +11,7 @@ import time
 from solution import solution
 
 
-
+node_size = 379
 
 
 def alpha_new(alpha,NGen):
@@ -21,6 +21,17 @@ def alpha_new(alpha,NGen):
     alpha=(1-delta)*alpha
     return alpha
 
+def find_distance(x1, x2, dct):
+    sm =0
+    for i in range(len(x1)):
+        s = int(x1[i])
+        d = int(x2[i])
+        try:
+            sm += dct[s][d]**2
+        except:
+            sm+= 1000 # when no distance exists, assume they are very far appart
+    
+    return sm 
 
 
 def FFA(objf,lb,ub,dim,n,MaxGeneration, data_package):
@@ -51,7 +62,7 @@ def FFA(objf,lb,ub,dim,n,MaxGeneration, data_package):
     #ns(i,:)=Lb+(Ub-Lb).*rand(1,d);
     ns = numpy.zeros((n, dim))
     for i in range(dim):
-        ns[:, i] = numpy.random.randint(1,1590, size=n) 
+        ns[:, i] = numpy.random.randint(1,node_size+1, size=n) # [1, 380)
     Lightn=numpy.ones(n)
     Lightn.fill(float("inf")) 
     
@@ -95,7 +106,7 @@ def FFA(objf,lb,ub,dim,n,MaxGeneration, data_package):
         Lightbest=Lightn[0]
         
         #% For output only
-        fbest=Lightbest;
+        fbest=Lightbest
         
         #% Move all fireflies to the better locations
     #    [ns]=ffa_move(n,d,ns,Lightn,nso,Lighto,nbest,...
@@ -103,11 +114,13 @@ def FFA(objf,lb,ub,dim,n,MaxGeneration, data_package):
         scale = []
         for b in range(dim):
             scale.append(abs(ub[b] - lb[b]))
+
         scale = numpy.array(scale)
         for i in range (0,n):
             # The attractiveness parameter beta=exp(-gamma*r)
             for j in range(0,n):
-                r=numpy.sqrt(numpy.sum((ns[i,:]-ns[j,:])**2));
+                # r=numpy.sqrt(numpy.sum((ns[i,:]-ns[j,:])**2));
+                r = find_distance(ns[i,:], ns[j,:], data_package["shortest"])
                 #r=1
                 # Update moves
                 if Lightn[i]>Lighto[j]: # Brighter and more attractive

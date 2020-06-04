@@ -21,7 +21,20 @@ import numpy
 import math
 from solution import solution
 
+def change_coordinate(original_co, leader_co, rand_co, dim):
+    l1 = numpy.ones(dim)
+    inter_local = numpy.intersect1d(original_co, leader_co)
+    l1[inter_local]=0 
+    
+    l2 = numpy.ones(dim)
+    inter_random = numpy.intersect1d(original_co, rand_co)
+    l2[inter_random]=0 
 
+    r1 = random.random()
+    r2 = (random.random()-0.5)*2
+    l_final = l1*r1 + l2*r2 
+    decision = numpy.where(l_final<2, 0, 1)
+    
 
 class SMO():
     def __init__(self,objf1,lb1,ub1,dim1,PopSize1,acc_err1,iters1):
@@ -58,7 +71,7 @@ class SMO():
     #================ X X X ===================== #
 
     # ==================================== Function: Initialization() ============================================ #
-    def initialize(self):
+    def initialize(self, data_dict):
         global GlobalMin, GlobalLeaderPosition, GlobalLimitCount, LocalMin, LocalLimitCount, LocalLeaderPosition
         S_max=int(self.PopSize/2)
         LocalMin = numpy.zeros(S_max)
@@ -67,14 +80,15 @@ class SMO():
         for i in range(self.PopSize):
             for j in range(self.dim):
                 if type(self.ub)==int:
-                    self.pos[i,j]=random.random()*(self.ub-self.lb)+self.lb
+                    self.pos[i,j]=random.randint(self.lb, self.ub) # select a node between node 1 and nth node ( here 379)
                 else:
-                    self.pos[i,j]=random.random()*(self.ub[j]-self.lb[j])+self.lb[j]
+                    self.pos[i,j]=random.randint(self.lb[j],self.ub[j])
+
         #Calculate objective function for each particle
         for i in range(self.PopSize):
             # Performing the bound checking
-            self.pos[i,:]=numpy.clip(self.pos[i,:], self.lb, self.ub)
-            self.fun_val[i]=self.objf(self.pos[i,:])
+            # self.pos[i,:]=numpy.clip(self.pos[i,:], self.lb, self.ub)
+            self.fun_val[i]=self.objf(self.pos[i,:], data_dict["centrality"])
             self.func_eval+=1
             self.fitness[i]=self.CalculateFitness(self.fun_val[i])
 
@@ -165,7 +179,7 @@ class SMO():
         i=lo
         while(i <=hi):
             while True:
-                PopRand=int((random.random()*(hi-lo)+lo))
+                PopRand=random.randint(lo, hi)
                 if (PopRand != i):
                     break
             for j in range(self.dim):
@@ -173,6 +187,7 @@ class SMO():
                     new_position[0,j]=self.pos[i,j]+(LocalLeaderPosition[k,j]-self.pos[i,j])*(random.random())+(self.pos[PopRand,j]-self.pos[i,j])*(random.random()-0.5)*2
                 else:
                     new_position[0,j]=self.pos[i,j]
+            
             new_position=numpy.clip(new_position, self.lb, self.ub)
             
             ObjValSol=self.objf(new_position)
@@ -254,8 +269,10 @@ class SMO():
                 LocalLimitCount[k]=0
     # ========================== X X X ======================== #
 
+
+
 # ==================================== Main() ===================================== #
-def main(objf1,lb1,ub1,dim1,PopSize1,iters,acc_err1,obj_val,succ_rate,mean_feval):
+def main(objf1,lb1,ub1,dim1,PopSize1,iters,acc_err1,obj_val,succ_rate,mean_feval, data_dict):
     smo=SMO(objf1,lb1,ub1,dim1,PopSize1,acc_err1,iters)
     s=solution()
     print("SMO is optimizing  \""+smo.objf.__name__+"\"")    
@@ -263,7 +280,7 @@ def main(objf1,lb1,ub1,dim1,PopSize1,iters,acc_err1,obj_val,succ_rate,mean_feval
     s.startTime=time.strftime("%Y-%m-%d-%H-%M-%S")
 
     # =========================== Calling: initialize() =========================== #
-    smo.initialize()
+    smo.initialize(data_dict)
 
     # ========================== Calling: GlobalLearning() ======================== #
     smo.GlobalLearning()

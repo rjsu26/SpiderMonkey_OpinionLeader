@@ -1,25 +1,13 @@
 # -*- coding: utf-8 -*-
-"""
-Python code of Spider-Monkey Optimization (SMO)
-Coded by: Mukesh Saraswat (emailid: saraswatmukesh@gmail.com), Himanshu Mittal (emailid: himanshu.mittal224@gmail.com) and Raju Pal (emailid: raju3131.pal@gmail.com)
-The code template used is similar to code given at link: https://github.com/himanshuRepo/CKGSA-in-Python 
- and C++ version of the SMO at link: http://smo.scrs.in/
-
-Reference: Jagdish Chand Bansal, Harish Sharma, Shimpi Singh Jadon, and Maurice Clerc. "Spider monkey optimization algorithm for numerical optimization." Memetic computing 6, no. 1, 31-47, 2014.
-@link: http://smo.scrs.in/
-
--- Main.py: Calling the Spider-Monkey Optimization (SMO) Algorithm 
-                for minimizing of an objective Function
-
-Code compatible:
- -- Python: 2.* or 3.*
-"""
 import SMO as smo
 import benchmarks
 import csv
 import numpy
 import time
 import math
+import json 
+
+data_dict = json.load(open("/home/raj/Desktop/research_papers/SpiderMonkey/SMO_PythonCode/Netscience.json", "r"))
 
 
 def selector(algo,func_details,popSize,Iter,succ_rate,mean_feval):
@@ -31,7 +19,7 @@ def selector(algo,func_details,popSize,Iter,succ_rate,mean_feval):
     obj_val=func_details[5]
        
     if(algo==0):
-        x,succ_rate,mean_feval=smo.main(getattr(benchmarks, function_name),lb,ub,dim,popSize,Iter,acc_err,obj_val,succ_rate,mean_feval)       
+        x,succ_rate,mean_feval=smo.main(getattr(benchmarks, function_name),lb,ub,dim,popSize,Iter,acc_err,obj_val,succ_rate,mean_feval, data_dict)       
     return x,succ_rate,mean_feval
     
     
@@ -40,21 +28,22 @@ SMO= True # Code by Himanshu Mittal
 
 
 # Select benchmark function
-F1=True
+F1=False 
+F_1 = True 
 
 optimizer=[SMO]
-benchmarkfunc=[F1] 
+benchmarkfunc=[F1, F_1] 
         
 # Select number of repetitions for each experiment. 
 # To obtain meaningful statistical results, usually 30 independent runs are executed for each algorithm.
-NumOfRuns=2
+NumOfRuns=1
 
 # Select general parameters for all optimizers (population size, number of iterations)
-PopulationSize = 10
+PopulationSize = 3
 Iterations= 5
 
 #Export results ?
-Export=True
+Export=False 
 
 #Automaticly generated name by date and time
 ExportToFile="experiment"+time.strftime("%Y-%m-%d-%H-%M-%S")+".csv" 
@@ -76,7 +65,6 @@ sd=0
 mean_feval=0
 succ_rate=0
 GlobalMins=numpy.zeros(NumOfRuns)
-
 
 for i in range (0, len(optimizer)):
     for j in range (0, len(benchmarkfunc)):
