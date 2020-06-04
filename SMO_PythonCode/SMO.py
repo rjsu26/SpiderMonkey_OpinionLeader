@@ -1,18 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Python code of Spider-Monkey Optimization (SMO)
-Coded by: Mukesh Saraswat (emailid: saraswatmukesh@gmail.com), Himanshu Mittal (emailid: himanshu.mittal224@gmail.com) and Raju Pal (emailid: raju3131.pal@gmail.com)
-The code template used is similar to code given at link: https://github.com/himanshuRepo/CKGSA-in-Python 
- and C++ version of the SMO at link: http://smo.scrs.in/
-
-Reference: Jagdish Chand Bansal, Harish Sharma, Shimpi Singh Jadon, and Maurice Clerc. "Spider monkey optimization algorithm for numerical optimization." Memetic computing 6, no. 1, 31-47, 2014.
-@link: http://smo.scrs.in/
-
--- SMO.py: Performing the Spider-Monkey Optimization (SMO) Algorithm 
-
-Code compatible:
- -- Python: 2.* or 3.*
-"""
 
 from __future__ import division
 import time
@@ -21,20 +7,9 @@ import numpy
 import math
 from solution import solution
 
-def change_coordinate(original_co, leader_co, rand_co, dim):
-    l1 = numpy.ones(dim)
-    inter_local = numpy.intersect1d(original_co, leader_co)
-    l1[inter_local]=0 
-    
-    l2 = numpy.ones(dim)
-    inter_random = numpy.intersect1d(original_co, rand_co)
-    l2[inter_random]=0 
+N=0 #global variable to save number of nodes in a graph
+cent = {}
 
-    r1 = random.random()
-    r2 = (random.random()-0.5)*2
-    l_final = l1*r1 + l2*r2 
-    decision = numpy.where(l_final<2, 0, 1)
-    
 
 class SMO():
     def __init__(self,objf1,lb1,ub1,dim1,PopSize1,acc_err1,iters1):
@@ -47,7 +22,7 @@ class SMO():
         self.pos=numpy.zeros((PopSize1,dim1))
         self.fun_val = numpy.zeros(PopSize1)
         self.fitness = numpy.zeros(PopSize1)
-        self.gpoint = numpy.zeros((PopSize1,2))
+        self.gpoint = numpy.zeros((PopSize1,2), dtype=int)
         self.prob=numpy.zeros(PopSize1)
         self.LocalLimit=dim1*PopSize1;
         self.GlobalLimit=PopSize1;
@@ -60,6 +35,36 @@ class SMO():
         self.max_part=5
         self.cr=0.1
 
+    def change_coordinate(self, original_co, leader_co, rand_co, dim, cr=0.5, subtr=0.5, mult=2):
+        
+        inter_local = numpy.in1d(original_co, leader_co)
+        inter_local = numpy.where(inter_local==True, 0, 1)
+        inter_random = numpy.in1d(original_co, rand_co)
+        inter_random = numpy.where(inter_random==True,0,1)
+
+        r1 = random.random()
+        r2 = (random.random()-subtr)*mult
+        l_final = inter_local*r1 + inter_random*r2 
+        decision = numpy.where(l_final<cr, 0, 1)
+        
+        final_co=numpy.zeros(dim)
+        for i in range(dim):
+            if decision[i]==0:
+                final_co[i] = original_co[i]
+            else: # replace it 
+                random_coordinate = 1
+                while True:
+                    if  type(self.ub)==int:
+                        random_coordinate = random.randint(self.lb,self.ub)
+                    else:
+                        random_coordinate = random.randint(self.lb[i], self.ub[i])
+
+                    if random_coordinate not in final_co:
+                        break 
+                final_co[i] = random_coordinate
+        
+        return final_co
+        
 
     # ====== Function: CalculateFitness() ========= #
     def CalculateFitness(self,fun1):
@@ -137,10 +142,10 @@ class SMO():
         global LocalMin, LocalLimitCount, LocalLeaderPosition
         S_max=int(self.PopSize/2)
         OldMin = numpy.zeros(S_max)
-        for k in range(self.group):
+        for k in range(self.group-1):
             OldMin[k]=LocalMin[k]
 
-        for  k in range(self.group):
+        for  k in range(self.group-1):
             i=int(self.gpoint[k,0])
             while (i<=int(self.gpoint[k,1])):
                 if (self.fun_val[i]<LocalMin[k]): 
@@ -148,7 +153,7 @@ class SMO():
                     LocalLeaderPosition[k,:]=self.pos[i,:]
                 i=i+1
        
-        for k in range(self.group):
+        for k in range(self.group-1):
             if (math.fabs(OldMin[k]-LocalMin[k])<self.acc_err):
                 LocalLimitCount[k]=LocalLimitCount[k]+1
             else:
@@ -180,17 +185,15 @@ class SMO():
         while(i <=hi):
             while True:
                 PopRand=random.randint(lo, hi)
-                if (PopRand != i):
+                if lo==hi or PopRand != i:
                     break
-            for j in range(self.dim):
-                if (random.random() >= self.cr):
-                    new_position[0,j]=self.pos[i,j]+(LocalLeaderPosition[k,j]-self.pos[i,j])*(random.random())+(self.pos[PopRand,j]-self.pos[i,j])*(random.random()-0.5)*2
-                else:
-                    new_position[0,j]=self.pos[i,j]
+                # if (PopRand != i):
+                    # break
             
+            new_position = self.change_coordinate(self.pos[i,:],LocalLeaderPosition[k,:], self.pos[PopRand,:], self.dim, self.cr)
             new_position=numpy.clip(new_position, self.lb, self.ub)
             
-            ObjValSol=self.objf(new_position)
+            ObjValSol=self.objf(new_position, cent)
             self.func_eval+=1
             FitnessSol=self.CalculateFitness(ObjValSol)
             if (FitnessSol>self.fitness[i]):
@@ -212,14 +215,22 @@ class SMO():
             if (random.random() < self.prob[i]):
                 l+=1
                 while True:
+                    if hi == lo + 1:
+                        PopRand=lo
+                        break
                     PopRand=int(random.random()*(hi-lo)+lo)
                     if (PopRand != i):
                         break
                 param2change=int(random.random()*self.dim)
                 new_position=self.pos[i,:]
-                new_position[param2change]=self.pos[i,param2change]+(GlobalLeaderPosition[param2change]-self.pos[i,param2change])*(random.random())+(self.pos[PopRand,param2change]-self.pos[i,param2change])*(random.random()-0.5)*2
+                
+                # new_position[param2change]=self.pos[i,param2change]+(GlobalLeaderPosition[param2change]-self.pos[i,param2change])*(random.random())+(self.pos[PopRand,param2change]-self.pos[i,param2change])*(random.random()-0.5)*2
+                
+                new_position = self.change_coordinate(self.pos[i,:], GlobalLeaderPosition, self.pos[PopRand, :], self.dim )
+
                 new_position=numpy.clip(new_position, self.lb, self.ub)
-                ObjValSol=self.objf(new_position)
+                
+                ObjValSol=self.objf(new_position, cent)
                 self.func_eval+=1
                 FitnessSol=self.CalculateFitness(ObjValSol)
                 if (FitnessSol>self.fitness[i]):
@@ -249,20 +260,50 @@ class SMO():
     # ================= Function: LocalLeaderDecision() ================ #
     def LocalLeaderDecision(self):
         global GlobalLeaderPosition, LocalLimitCount, LocalLeaderPosition
-        for k in range(self.group):
+        for k in range(self.group-1):
             if(LocalLimitCount[k]>self.LocalLimit):
                 i=self.gpoint[k,0]
                 while(i<=int(self.gpoint[k,1])):
+                    # for j in range(self.dim):
+                    #     if (random.random()>= self.cr):
+                    #         if type(self.ub)==int:
+                    #             # self.pos[i,j]=random.random()*(self.ub-self.lb)+self.lb
+                    #             self.pos[i,j] = random.randint(self,lb, self.ub)
+                    #         else:
+                    #             # self.pos[i,j]=random.random()*(self.ub[j]-self.lb[j] )+self.lb[j]
+                    #             self.pos[i,j]=random.randint(self.lb[j], self.ub[j])
+                    #     else:
+                    #         self.pos[i,j]=self.pos[i,j]+(GlobalLeaderPosition[j]-self.pos[i,j])*random.random()+(self.pos[i,j]-LocalLeaderPosition[k,j])*random.random()
+                            
+                    inter_global = numpy.in1d(self.pos[i,:], GlobalLeaderPosition)
+                    inter_global = numpy.where(inter_global==True, 0, 1)
+                    inter_local = numpy.in1d(self.pos[i,:], LocalLeaderPosition[k,:])
+                    inter_local = numpy.where(inter_local==True,0,1)
+
+                    r1 = random.random()
+                    r2 = random.random()
+                    l_final = inter_global*r1 + inter_local*r2 
+                    decision = numpy.where(l_final<self.cr, 0, 1)
+                    
+                    final_co=numpy.zeros(self.dim)
                     for j in range(self.dim):
-                        if (random.random()>= self.cr):
-                            if type(self.ub)==int:
-                                self.pos[i,j]=random.random()*(self.ub-self.lb)+self.lb
-                            else:
-                                self.pos[i,j]=random.random()*(self.ub[j]-self.lb[j])+self.lb[j]
-                        else:
-                            self.pos[i,j]=self.pos[i,j]+(GlobalLeaderPosition[j]-self.pos[i,j])*random.random()+(self.pos[i,j]-LocalLeaderPosition[k,j])*random.random()
+                        if decision[j]==0:
+                            final_co[j] = self.pos[i,j]
+                        else: # replace it 
+                            random_coordinate = 1
+                            while True:
+                                if  type(self.ub)==int:
+                                    random_coordinate = random.randint(self.lb,self.ub)
+                                else:
+                                    random_coordinate = random.randint(self.lb[j], self.ub[j])
+
+                                if random_coordinate not in final_co:
+                                    break 
+                            final_co[j] = random_coordinate
+
+                    self.pos[i,:] = final_co
                     self.pos[i,:]=numpy.clip(self.pos[i,:], self.lb, self.ub)
-                    self.fun_val[i]=self.objf(self.pos[i,:])
+                    self.fun_val[i]=self.objf(self.pos[i,:], cent)
                     self.func_eval+=1
                     self.fitness[i]=self.CalculateFitness(self.fun_val[i])
                     i+=1
@@ -272,7 +313,10 @@ class SMO():
 
 
 # ==================================== Main() ===================================== #
-def main(objf1,lb1,ub1,dim1,PopSize1,iters,acc_err1,obj_val,succ_rate,mean_feval, data_dict):
+def main(objf1,lb1,ub1,dim1,PopSize1,iters,acc_err1,obj_val,succ_rate,mean_feval, data_dict, Num_nodes):
+    global N, cent 
+    cent = data_dict["centrality"]
+    N = Num_nodes
     smo=SMO(objf1,lb1,ub1,dim1,PopSize1,acc_err1,iters)
     s=solution()
     print("SMO is optimizing  \""+smo.objf.__name__+"\"")    
@@ -293,14 +337,14 @@ def main(objf1,lb1,ub1,dim1,PopSize1,iters,acc_err1,obj_val,succ_rate,mean_feval
 
     # ================================= Looping ================================== #
     for l in range(iters):
-        for k in range(smo.group):
+        for k in range(smo.group-1):
             # ==================== Calling: LocalLeaderPhase() =================== #
             smo.LocalLeaderPhase(k)
             
         # =================== Calling: CalculateProbabilities() ================== #
         smo.CalculateProbabilities()
 
-        for k in range(smo.group):
+        for k in range(smo.group-1):
             # ==================== Calling: GlobalLeaderPhase() ================== #
             smo.GlobalLeaderPhase(k)
             
@@ -327,7 +371,9 @@ def main(objf1,lb1,ub1,dim1,PopSize1,iters,acc_err1,obj_val,succ_rate,mean_feval
 
         # ================ Displaying the fitness of each iteration ============== #        
         if (l%1==0):
-               print(['At iteration '+ str(l+1)+ ' the best fitness is '+ str(gBestScore)]);
+               print(['At iteration '+ str(l+1)+ ' the best fitness is '+ str(gBestScore)])
+               print("Best position: ", Bestpos)
+               print()
 
         # ====================== Checking: acc_error ============================ #        
         if(math.fabs(GlobalMin-obj_val)<=smo.acc_err):

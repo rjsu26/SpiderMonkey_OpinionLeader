@@ -33,7 +33,7 @@ def getFunctionDetails(a):
     
     # [name, lb, ub, dim, acc_err, obj_val]
     param = {	0: ["F1",-100,100,30,1.0e-5,0],
-                        1:["F_1", 1, 379, 6, 1.0e-5, 0],
+                        1:["F_1", 1, 379, 7, 1.0e-5, -1000],
             }
     return param.get(a, "nothing")
 

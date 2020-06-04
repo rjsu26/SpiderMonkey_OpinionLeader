@@ -46,7 +46,7 @@ def find_centralities(G):
     # node_map={}
     # i=1
     for n in G.nodes():
-        theta = -(mean([closen[n], eigen[n], betwn[n], page[n]]))/(1+deg[n])
+        theta = (mean([closen[n], eigen[n], betwn[n], page[n]]))/(1+deg[n])
         additive_cent[n]=theta 
         # node_map[n]=i 
         # i+= 1
@@ -55,4 +55,4 @@ def find_centralities(G):
 
 if __name__ == "__main__":
     short, cent = read_graph()
-    # print(short)
+    # print(cent)

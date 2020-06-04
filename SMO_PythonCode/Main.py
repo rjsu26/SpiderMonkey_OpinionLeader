@@ -7,6 +7,7 @@ import time
 import math
 import json 
 
+N = 379
 data_dict = json.load(open("/home/raj/Desktop/research_papers/SpiderMonkey/SMO_PythonCode/Netscience.json", "r"))
 
 
@@ -19,7 +20,7 @@ def selector(algo,func_details,popSize,Iter,succ_rate,mean_feval):
     obj_val=func_details[5]
        
     if(algo==0):
-        x,succ_rate,mean_feval=smo.main(getattr(benchmarks, function_name),lb,ub,dim,popSize,Iter,acc_err,obj_val,succ_rate,mean_feval, data_dict)       
+        x,succ_rate,mean_feval=smo.main(getattr(benchmarks, function_name),lb,ub,dim,popSize,Iter,acc_err,obj_val,succ_rate,mean_feval, data_dict, N)       
     return x,succ_rate,mean_feval
     
     
@@ -39,11 +40,11 @@ benchmarkfunc=[F1, F_1]
 NumOfRuns=1
 
 # Select general parameters for all optimizers (population size, number of iterations)
-PopulationSize = 3
-Iterations= 5
+PopulationSize = 10
+Iterations= 10
 
 #Export results ?
-Export=False 
+Export=False
 
 #Automaticly generated name by date and time
 ExportToFile="experiment"+time.strftime("%Y-%m-%d-%H-%M-%S")+".csv" 
