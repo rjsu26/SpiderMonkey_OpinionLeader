@@ -30,7 +30,7 @@ SMO= True # Code by Himanshu Mittal
 
 # Select benchmark function
 F1=False 
-F_1 = True 
+F_1 = True # our netScience graph function
 
 optimizer=[SMO]
 benchmarkfunc=[F1, F_1] 

@@ -18,7 +18,7 @@ def read_graph():
     G = nx.subgraph(G, set(nodes))
     G = nx.convert_node_labels_to_integers(G,first_label=1)
     print(nx.info(G))
-
+    neibr = list(G.neighbors(1))
     cent = find_centralities(G)
     shortest = dict(nx.all_pairs_dijkstra_path_length(G,weight="value"))
     # new_shortest = {}
