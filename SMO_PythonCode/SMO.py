@@ -60,7 +60,7 @@ class SMO():
         self.Bestpos=numpy.zeros(dim1, dtype = int)
         self.func_eval=0
         self.part=1
-        self.max_part=PopSize1/10
+        self.max_part=math.ceil(PopSize1/3)
         self.cr=0.1
 
     def change_coordinate(self, original_co, leader_co, rand_co, dim, cr=0.5, subtr=0.5, mult=2):
@@ -173,9 +173,9 @@ class SMO():
     def LocalLearning(self):
         global LocalMax, LocalLimitCount, LocalLeaderPosition
         S_max=self.max_part # max number of groups possible is when each group has 2 member. 
-        OldMin = numpy.zeros(S_max)
+        OldMax = numpy.zeros(S_max)
         for k in range(self.group):
-            OldMin[k]=LocalMax[k]
+            OldMax[k]=LocalMax[k]
 
         for  k in range(self.group):
             i=int(self.gpoint[k,0])
@@ -188,8 +188,8 @@ class SMO():
        
         for k in range(self.group):
             # if (math.fabs(OldMin[k]-LocalMax[k])<self.acc_err):
-            if LocalMax[k] < (self.acc_err + OldMin[k]): # LocalMax should increase by more than accepted error(here, 0.00001) from Old local max value    
-                LocalLimitCount[k]=LocalLimitCount[k]+1
+            if LocalMax[k] < (self.acc_err + OldMax[k]): # LocalMax should increase by more than accepted error(here, 0.00001) from Old local max value    
+                LocalLimitCount[k]+=1
             else:
                 LocalLimitCount[k]=0
     # ========================== X X X ======================== #
@@ -249,9 +249,9 @@ class SMO():
             # new_position = self.pos[i,:]
             # new_position = new_position[final_array]
             neighbors = find_sort_neighbors(self.pos[i,:][final_array])
-            new_position = self.pos[i,:]
+            new_position = self.pos[i,:].copy()
             while True:
-                temp = new_position
+                temp = new_position.copy()
                 for j in range(len(final_array)):
                     if  final_array[j]==True:
                         temp[j] = random.choice(neighbors[self.pos[i,j]])
@@ -265,7 +265,7 @@ class SMO():
             self.func_eval+=1
             FitnessSol=self.CalculateFitness(ObjValSol)
             if (FitnessSol>self.fitness[i]):
-                self.pos[i,:]=new_position
+                self.pos[i,:]=new_position.copy()
                 self.fun_val[i]=ObjValSol
                 self.fitness[i]=FitnessSol
             i+=1
@@ -304,13 +304,14 @@ class SMO():
 
             change_array = self.pos[i,:][final_array]
             neighbors = find_sort_neighbors(change_array)
-            new_position=self.pos[i,:]
+            new_position=self.pos[i,:].copy()
             
             while True:
-                temp = new_position
+                temp = new_position.copy()
                 for j in range(len(final_array)):
                     if  final_array[j]==True:
-                        temp[j] = random.choice(neighbors[self.pos[i,j]])
+                        new_node = random.choice(neighbors[self.pos[i,j]])
+                        temp[j] = new_node
                 if len(numpy.unique(temp)) == len(new_position):
                     new_position = temp
                     leh+= len(change_array)
@@ -321,7 +322,7 @@ class SMO():
             self.func_eval+=1
             FitnessSol=self.CalculateFitness(ObjValSol)
             if (FitnessSol>self.fitness[i]):
-                self.pos[i,:]=new_position
+                self.pos[i,:]=new_position.copy()
                 self.fun_val[i]=ObjValSol
                 self.fitness[i]=FitnessSol
             i+=1;
@@ -369,7 +370,7 @@ class SMO():
 
                     r1,r2= [random.random() for _ in range(2)]
                     final_array = intersection_global*r1 + intersection_local*r2
-                    new_position = self.pos[i,:]
+                    new_position = self.pos[i,:].copy()
                     change_array = []     
                     for j in range(len(self.pos[i,:])):
                         if final_array[j] >= self.cr:
@@ -383,16 +384,16 @@ class SMO():
                     
                     neighbors = find_sort_neighbors(change_array)
                     while True:
-                        temp = new_position
+                        temp = new_position.copy()
                         for j in range(len(final_array)):
                             if  final_array[j]==change_array[j]:
                                 temp[j] = random.choice(neighbors[self.pos[i,j]])
                         if len(numpy.unique(temp)) == len(new_position):
                             new_position = temp
                             break
-
-                    # self.pos[i,:]=numpy.clip(self.pos[i,:], self.lb, self.ub)
-                    self.fun_val[i]=self.objf(self.pos[i,:])
+                    
+                    self.pos[i,:] = new_position.copy()
+                    self.fun_val[i]=self.objf(self.pos[i,:], cent)
                     self.func_eval+=1
                     self.fitness[i]=self.CalculateFitness(self.fun_val[i])
                     i+=1
@@ -403,7 +404,7 @@ class SMO():
 
 # ==================================== Main() ===================================== #
 def main(objf1,lb1,ub1,dim1,PopSize1,iters,acc_err1,obj_val,succ_rate,mean_feval, data_dict, Num_nodes):
-    global N, cent 
+    global N, cent , GlobalLeaderPosition
     cent = data_dict["centrality"]
     N = Num_nodes
     read_graph()
@@ -414,7 +415,7 @@ def main(objf1,lb1,ub1,dim1,PopSize1,iters,acc_err1,obj_val,succ_rate,mean_feval
     s.startTime=time.strftime("%Y-%m-%d-%H-%M-%S")
 
     # =========================== Calling: initialize() =========================== #
-    smo.initialize(data_dict)
+    smo.initialize()
 
     # ========================== Calling: GlobalLearning() ======================== #
     smo.GlobalLearning()
@@ -427,14 +428,14 @@ def main(objf1,lb1,ub1,dim1,PopSize1,iters,acc_err1,obj_val,succ_rate,mean_feval
 
     # ================================= Looping ================================== #
     for l in range(iters):
-        for k in range(smo.group-1):
+        for k in range(smo.group):
             # ==================== Calling: LocalLeaderPhase() =================== #
             smo.LocalLeaderPhase(k)
             
         # =================== Calling: CalculateProbabilities() ================== #
         smo.CalculateProbabilities()
 
-        for k in range(smo.group-1):
+        for k in range(smo.group):
             # ==================== Calling: GlobalLeaderPhase() ================== #
             smo.GlobalLeaderPhase(k)
             
@@ -455,7 +456,8 @@ def main(objf1,lb1,ub1,dim1,PopSize1,iters,acc_err1,obj_val,succ_rate,mean_feval
         
         # ====================== Saving the best individual ====================== #        
         smo.MinCost[l] = GlobalMax
-        Bestpos=smo.pos[1,:]
+        # Bestpos=smo.pos[1,:]
+        Bestpos=GlobalLeaderPosition
         gBestScore=GlobalMax
 
 
@@ -485,6 +487,6 @@ def main(objf1,lb1,ub1,dim1,PopSize1,iters,acc_err1,obj_val,succ_rate,mean_feval
 
     return s, succ_rate,mean_feval
 
-    # ================================ X X X =================================== #
+    # ================================ X XXX X =================================== #
          
     
