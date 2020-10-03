@@ -3,6 +3,7 @@
 from __future__ import division
 import time
 import random
+from datetime import datetime # to be used into random.seed function in initialization 
 import numpy
 import math
 from solution import solution
@@ -26,14 +27,54 @@ def read_graph():
     G = nx.subgraph(G, set(nodes))
     G = nx.convert_node_labels_to_integers(G,first_label=1)
    
-def find_sort_neighbors(inpt_array):
-    """ return a dictionary of neigbours of each node in inpt_array """
-    main_lst = {}
+def find_sort_neighbors(positions, selection):
+    """
+    @Input 
+        positions: position array having node numbers 
+        selection: Array of True and False where True denotes which position index needs to be replaced.
+    @Output 
+        a new position based on input positions and selection array where each replacement is either done with a node's corresponding neighbors, or with a random node if unqiue positions are not possible in former method. """
+    
+    # Make a list of dictionary of neighbors of nodes present in replacable nodes
+    main_lst = []
+    inpt_array = positions[selection]
     for n in inpt_array:
         neig = list(G.neighbors(n))
-        main_lst[n] = neig
+        main_lst.append({"node":n, "val":neig})
+    # Sort as per number of neighbors in ascending order 
+    main_lst = sorted(main_lst , key = lambda x: len(x["val"]))
+
+    final_dict = {} # will contain mapping to each element in position array
+    pool = {}# will be used to keep count of each node being used
+
+    # Add all unreplacable nodes into pool
+    for i in range(len(positions)):
+        if selection[i]==False:
+            pool[positions[i]] = 1
+            final_dict[positions[i]] = positions[i]
+
+    for item in main_lst:
+        n = item["node"]
+        lst_nbrs = item["val"]
+        tries = len(lst_nbrs) # try 2 times if I have 2 neighbors.
+        while tries>0:
+            random_nbr = random.choice(item["val"])
+            if pool.get(random_nbr, 0)==0:
+                final_dict[n]=random_nbr
+                pool[random_nbr] = 1
+                break
+            else:
+                tries -=1
+        
+        if tries==0: # when no replacement was found, just use any random node.
+            node = random.randint(1,N)
+            pool[node]=1
+            final_dict[n]=node 
     
-    return main_lst
+    for i in range(len(positions)): # put all mappings into final array
+        positions[i] = final_dict[positions[i]]
+
+    return positions
 
 
 class SMO():
@@ -49,7 +90,8 @@ class SMO():
         self.fitness = numpy.zeros(PopSize1)
         # Assuming all population are 1 group. So lo=0 and hi= population -1, for gpoint[0:]
         self.group = 1
-        self.gpoint = numpy.zeros((PopSize1,2), dtype=int)
+        self.max_part=math.ceil(PopSize1/3)
+        self.gpoint = numpy.zeros((self.max_part,2), dtype=int)
         self.gpoint[0,0] = 0
         self.gpoint[0,1] = PopSize1-1 
         self.prob=numpy.zeros(PopSize1)
@@ -60,7 +102,6 @@ class SMO():
         self.Bestpos=numpy.zeros(dim1, dtype = int)
         self.func_eval=0
         self.part=1
-        self.max_part=math.ceil(PopSize1/3)
         self.cr=0.1
 
     def change_coordinate(self, original_co, leader_co, rand_co, dim, cr=0.5, subtr=0.5, mult=2):
@@ -96,6 +137,7 @@ class SMO():
 
     # ====== Function: CalculateFitness() ========= #
     def CalculateFitness(self,fun1):
+        """ Fitness is same as influence value which a node is already having. If not, it can be changed in this function. """
         if fun1 >= 0:
         #     result = (1/(fun1+1))
             result = fun1 
@@ -115,11 +157,20 @@ class SMO():
         LocalLeaderPosition=numpy.zeros((S_max,self.dim), dtype = int)
         LocalLimitCount=numpy.zeros(S_max, dtype = int)
         for i in range(self.PopSize):
+            nodes_selected={}
+            # random.seed(datetime.now())
             for j in range(self.dim):
-                if type(self.ub)==int:
-                    self.pos[i,j]=random.randint(self.lb, self.ub) # select a node between node 1 and nth node ( here 379)
-                else:
-                    self.pos[i,j]=random.randint(self.lb[j],self.ub[j])
+                while True:
+                    if type(self.ub)==int:
+                        node=random.randint(self.lb, self.ub) # select a node between node 1 and nth node ( here 379)
+                    else:
+                        node=random.randint(self.lb[j],self.ub[j])
+                    
+                    if nodes_selected.get(node,0)==0:
+                        self.pos[i,j] = node 
+                        # print("pos[{},{}] = {}".format(i,j,node))
+                        nodes_selected[node] = 1
+                        break
 
         #Calculate objective function for each particle
         for i in range(self.PopSize):
@@ -240,6 +291,9 @@ class SMO():
             else:
                 #I strictly don't want to be like that random monkey of my group in any way!!!.
                 intersection_random = numpy.where(intersection_random==True, 1, 0) # replace all values which match with him
+                if  numpy.any(intersection_random)==False : #all elements are 0
+                    #set all to 1 
+                    intersection_random.fill(1)
 
 
             r1,r2= [random.random() for _ in range(2)]
@@ -248,26 +302,18 @@ class SMO():
 
             # new_position = self.pos[i,:]
             # new_position = new_position[final_array]
-            neighbors = find_sort_neighbors(self.pos[i,:][final_array])
-            new_position = self.pos[i,:].copy()
-            while True:
-                temp = new_position.copy()
-                for j in range(len(final_array)):
-                    if  final_array[j]==True:
-                        temp[j] = random.choice(neighbors[self.pos[i,j]])
-                if len(numpy.unique(temp)) == len(new_position):
-                    new_position = temp
-                    break
+            if numpy.any(final_array)==True:
+                new_position = find_sort_neighbors(self.pos[i,:], final_array)
 
 
             
-            ObjValSol=self.objf(new_position, cent)
-            self.func_eval+=1
-            FitnessSol=self.CalculateFitness(ObjValSol)
-            if (FitnessSol>self.fitness[i]):
-                self.pos[i,:]=new_position.copy()
-                self.fun_val[i]=ObjValSol
-                self.fitness[i]=FitnessSol
+                ObjValSol=self.objf(new_position, cent)
+                self.func_eval+=1
+                FitnessSol=self.CalculateFitness(ObjValSol)
+                if (FitnessSol>self.fitness[i]):
+                    self.pos[i,:]=new_position.copy()
+                    self.fun_val[i]=ObjValSol
+                    self.fitness[i]=FitnessSol
             i+=1
     # ========================== X X X ======================== #
 
@@ -279,7 +325,7 @@ class SMO():
         hi=int(self.gpoint[k,1])
         i=lo;
         leh=lo;
-        while(leh<hi):
+        while(max(i,leh)<hi):
             # if (random.random() < self.prob[i]):
             #     leh+=1
             while True:
@@ -287,9 +333,6 @@ class SMO():
                 if (PopRand != i):
                     break
                 
-            # param2change=int(random.random()*self.dim)
-            
-            # new_position[param2change]=self.pos[i,param2change]+(GlobalLeaderPosition[param2change]-self.pos[i,param2change])*(random.random())+(self.pos[PopRand,param2change]-self.pos[i,param2change])*(random.random()-0.5)*2
             intersection_global = numpy.isin(self.pos[i,:], GlobalLeaderPosition) # all those elements in pos[i,:] which are also in GlobalLeaderPosition will be true, all else will be false
             intersection_global = numpy.where(intersection_global==True, 0, 1) # make all existing values as 0 which means they don't have to be replaced
             intersection_random = numpy.isin(self.pos[i,:], self.pos[PopRand,:]) 
@@ -297,34 +340,26 @@ class SMO():
                 intersection_random = numpy.where(intersection_random==True, 0, 1) # replace all values not matching with him
             else:
                 intersection_random = numpy.where(intersection_random==True, 1, 0) # replace all values matching with him
+                if  numpy.any(intersection_random)==False : # if all elements are 0
+                    intersection_random.fill(1) #set all to 1 
 
             r1,r2= [random.random() for _ in range(2)]
             final_array = intersection_global*r1 + intersection_random*r2 
             final_array = numpy.where(final_array>=self.prob[i], True, False)
 
-            change_array = self.pos[i,:][final_array]
-            neighbors = find_sort_neighbors(change_array)
-            new_position=self.pos[i,:].copy()
-            
-            while True:
-                temp = new_position.copy()
-                for j in range(len(final_array)):
-                    if  final_array[j]==True:
-                        new_node = random.choice(neighbors[self.pos[i,j]])
-                        temp[j] = new_node
-                if len(numpy.unique(temp)) == len(new_position):
-                    new_position = temp
-                    leh+= len(change_array)
-                    break
+            # change_array = self.pos[i,:][final_array]
+            if numpy.any(final_array)==True:
+                new_position = find_sort_neighbors(self.pos[i,:], final_array)
+                leh+= len(self.pos[i,:][final_array])
 
-            # new_position=numpy.clip(new_position, self.lb, self.ub)
-            ObjValSol=self.objf(new_position, cent)
-            self.func_eval+=1
-            FitnessSol=self.CalculateFitness(ObjValSol)
-            if (FitnessSol>self.fitness[i]):
-                self.pos[i,:]=new_position.copy()
-                self.fun_val[i]=ObjValSol
-                self.fitness[i]=FitnessSol
+                # new_position=numpy.clip(new_position, self.lb, self.ub)
+                ObjValSol=self.objf(new_position, cent)
+                self.func_eval+=1
+                FitnessSol=self.CalculateFitness(ObjValSol)
+                if (FitnessSol>self.fitness[i]):
+                    self.pos[i,:]=new_position.copy()
+                    self.fun_val[i]=ObjValSol
+                    self.fitness[i]=FitnessSol
             i+=1;
             if i==hi:
                 i=lo;
@@ -354,14 +389,6 @@ class SMO():
             if(LocalLimitCount[k]>self.LocalLimit):
                 i=self.gpoint[k,0]
                 while(i<=int(self.gpoint[k,1])):
-                    # for j in range(self.dim):
-                        # if (random.random()>= self.cr):
-                        #     if type(self.ub)==int:
-                        #         self.pos[i,j]=random.random()*(self.ub-self.lb)+self.lb
-                        #     else:
-                        #         self.pos[i,j]=random.random()*(self.ub[j]-self.lb[j])+self.lb[j]
-                        # else:
-                        #     self.pos[i,j]=self.pos[i,j]+(GlobalLeaderPosition[j]-self.pos[i,j])*random.random()+(self.pos[i,j]-LocalLeaderPosition[k,j])*random.random()
                     
                     intersection_global = numpy.isin(self.pos[i,:], GlobalLeaderPosition) # all those elements in pos[i,:] which are also in GlobalLeaderPosition will be true, all else will be false
                     intersection_global = numpy.where(intersection_global==True, 0, 1) # make all existing values as 0 which means they don't have to be replaced
@@ -371,26 +398,19 @@ class SMO():
                     r1,r2= [random.random() for _ in range(2)]
                     final_array = intersection_global*r1 + intersection_local*r2
                     new_position = self.pos[i,:].copy()
-                    change_array = []     
+                    change_array = [True]*len(new_position)     
                     for j in range(len(self.pos[i,:])):
                         if final_array[j] >= self.cr:
                             while True:
                                 new_node = random.randint(self.lb, self.ub)
                                 if new_node not in new_position:
                                     new_position[j] = new_node
+                                    change_array[j] = False
                                     break 
-                        else:
-                            change_array.append(new_position[j])
+
+                    if numpy.any(change_array)==True:
+                        new_position = find_sort_neighbors(new_position, change_array)
                     
-                    neighbors = find_sort_neighbors(change_array)
-                    while True:
-                        temp = new_position.copy()
-                        for j in range(len(final_array)):
-                            if  final_array[j]==change_array[j]:
-                                temp[j] = random.choice(neighbors[self.pos[i,j]])
-                        if len(numpy.unique(temp)) == len(new_position):
-                            new_position = temp
-                            break
                     
                     self.pos[i,:] = new_position.copy()
                     self.fun_val[i]=self.objf(self.pos[i,:], cent)
@@ -428,6 +448,7 @@ def main(objf1,lb1,ub1,dim1,PopSize1,iters,acc_err1,obj_val,succ_rate,mean_feval
 
     # ================================= Looping ================================== #
     for l in range(iters):
+
         for k in range(smo.group):
             # ==================== Calling: LocalLeaderPhase() =================== #
             smo.LocalLeaderPhase(k)
